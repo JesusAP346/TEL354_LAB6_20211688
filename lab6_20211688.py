@@ -55,6 +55,46 @@ def get_attachment_point(mac):
                     return ap[0]["switchDPID"], ap[0]["port"]
     return None
 
+def exportar_archivo(nombre_archivo):
+    try:
+        data = {
+            "alumnos": [
+                {"nombre": a.nombre, "codigo": a.codigo, "mac": a.mac}
+                for a in base_datos["alumnos"]
+            ],
+            "cursos": [
+                {
+                    "codigo": c.codigo,
+                    "estado": c.estado,
+                    "nombre": c.nombre,
+                    "alumnos": c.alumnos,
+                    "servidores": c.servidores,
+                }
+                for c in base_datos["cursos"]
+            ],
+            "servidores": [
+                {
+                    "nombre": s.nombre,
+                    "ip": s.ip,
+                    "servicios": [
+                        {
+                            "nombre": svc.nombre,
+                            "protocolo": svc.protocolo,
+                            "puerto": svc.puerto
+                        }
+                        for svc in s.servicios
+                    ]
+                }
+                for s in base_datos["servidores"]
+            ]
+        }
+        with open(nombre_archivo, 'w') as file:
+            yaml.dump(data, file)
+        print(f"✅ Archivo '{nombre_archivo}' exportado correctamente.")
+    except Exception as e:
+        print(f"❌ Error al exportar archivo: {e}")
+
+
 def get_route(dpid1, port1, dpid2, port2):
     url = f"{BASE_URL}/wm/topology/route/{dpid1}/{port1}/{dpid2}/{port2}/json"
     r = requests.get(url)
@@ -203,7 +243,11 @@ def menu():
             nombre_archivo = input("Ingrese el nombre del archivo YAML (ej. datos.yaml): ").strip()
             importar_archivo(nombre_archivo)
 
-    
+        elif opcion == "2":
+            nombre_archivo = input("Ingrese el nombre del archivo YAML a exportar (ej. salida.yaml): ").strip()
+            exportar_archivo(nombre_archivo)
+
+
         elif opcion == "3":
             while True:
                 print("\n📘 SUBMENÚ - CURSOS")
