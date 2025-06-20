@@ -203,6 +203,7 @@ def menu():
             nombre_archivo = input("Ingrese el nombre del archivo YAML (ej. datos.yaml): ").strip()
             importar_archivo(nombre_archivo)
 
+    
         elif opcion == "3":
             while True:
                 print("\n📘 SUBMENÚ - CURSOS")
@@ -274,6 +275,59 @@ def menu():
                 else:
                     print("❌ Opción inválida.")
 
+        elif opcion == "4":
+            while True:
+                print("\n🎓 SUBMENÚ - ALUMNOS")
+                print("1) Listar todos")
+                print("2) Ver detalle")
+                print("3) Crear nuevo alumno")
+                print("4) Borrar alumno")
+                print("5) Volver al menú principal")
+                subop = input(">>> ").strip()
+
+                if subop == "1":
+                    if not base_datos["alumnos"]:
+                        print("⚠ No hay alumnos registrados.")
+                    else:
+                        for a in base_datos["alumnos"]:
+                            print(f"- {a.codigo} | {a.nombre} | MAC: {a.mac}")
+
+                elif subop == "2":
+                    cod = input("Ingrese el código del alumno: ").strip()
+                    alumno = next((a for a in base_datos["alumnos"] if a.codigo == cod), None)
+                    if alumno:
+                        print(f"🎓 Código: {alumno.codigo}")
+                        print(f"   Nombre: {alumno.nombre}")
+                        print(f"   MAC: {alumno.mac}")
+                    else:
+                        print("❌ Alumno no encontrado.")
+
+                elif subop == "3":
+                    codigo = input("Código: ").strip()
+                    if any(a.codigo == codigo for a in base_datos["alumnos"]):
+                        print("⚠ Ya existe un alumno con ese código.")
+                        continue
+                    nombre = input("Nombre completo: ").strip()
+                    mac = input("MAC address: ").strip()
+                    base_datos["alumnos"].append(Alumno(nombre, codigo, mac))
+                    print("✅ Alumno creado correctamente.")
+
+                elif subop == "4":
+                    cod = input("Código del alumno a eliminar: ").strip()
+                    prev = len(base_datos["alumnos"])
+                    base_datos["alumnos"] = [a for a in base_datos["alumnos"] if a.codigo != cod]
+                    if len(base_datos["alumnos"]) < prev:
+                        print("🗑️ Alumno eliminado.")
+                    else:
+                        print("❌ Alumno no encontrado.")
+
+                elif subop == "5":
+                    break
+
+                else:
+                    print("❌ Opción inválida.")
+
+        
         elif opcion == "5":
             print("🖥️ SERVIDORES:")
             if not base_datos["servidores"]:
