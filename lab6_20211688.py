@@ -87,6 +87,14 @@ def get_route(src_dpid, src_port, dst_dpid, dst_port):
         return [(hop["switch"], hop["port"]["portNumber"]) for hop in ruta]
     return []
 
+def procesar_ruta(route):
+    hops_procesados = []
+    for i in range(0, len(route) - 1, 2):
+        dpid = route[i][0]
+        in_port = route[i][1]
+        out_port = route[i + 1][1]
+        hops_procesados.append((dpid, in_port, out_port))
+    return hops_procesados
 
 def build_route(route, alumno, servidor, servicio, handler):
     protocolo = servicio.protocolo.lower()
@@ -97,67 +105,60 @@ def build_route(route, alumno, servidor, servicio, handler):
     print(f"MAC destino para {ip_dst}: {mac_dst}")
 
     ip_proto = "0x06" if protocolo == "tcp" else "0x11"
+    hops = procesar_ruta(route)
 
-    for i, (dpid, port) in enumerate(route):
-        # Flujo de ida (host -> servidor)
+    for i, (dpid, in_port, out_port) in enumerate(hops):
+        # Ida: host -> servidor
         flow_fwd = {
             "switch": dpid,
             "name": f"{handler}_fwd_{i}",
-            "priority": "32768",
-            "eth_type": "0x0800",  # IPv4
+            "priority": "100",
+            "eth_type": "0x0800",
             "ipv4_dst": ip_dst,
             "eth_src": mac_src,
             "ip_proto": ip_proto,
             "tp_dst": str(puerto),
+            "in_port": in_port,
             "active": "true",
-            "actions": f"output={port}"
+            "actions": f"output={out_port}"
         }
 
-        # Flujo de vuelta (servidor -> host)
+        # Retorno: servidor -> host
         flow_rev = {
             "switch": dpid,
             "name": f"{handler}_rev_{i}",
-            "priority": "32768",
-            "eth_type": "0x0800",  # IPv4
+            "priority": "100",
+            "eth_type": "0x0800",
             "ipv4_src": ip_dst,
             "eth_dst": mac_src,
             "ip_proto": ip_proto,
             "tp_src": str(puerto),
+            "in_port": out_port,
             "active": "true",
-            "actions": f"output={port}"
+            "actions": f"output={in_port}"
         }
-        
-        
-        # Flujo ARP: Solicitud ARP (host -> servidor)
-        flowArp = {
+
+        # Eliminar ARP anterior
+        requests.delete(f"{BASE_URL}/wm/staticflowpusher/json", json={"name": f"{handler}_arp_{i}"})
+
+        # ARP
+        flow_arp = {
             "switch": dpid,
             "name": f"{handler}_arp_{i}",
-            "priority": "32768",
+            "priority": "300",
             "eth_type": "0x0806",
             "active": "true",
-            "actions": f"output={port}"
+            "actions": "normal"
         }
 
-        """
-
-        # Flujo ARP: Respuesta ARP (servidor -> host)
-        flow_arp_resp = {
-            "switch": dpid,
-            "name": f"{handler}_arp_resp_{i}",
-            "priority": "32768",
-            "eth_type": "0x0806",  # ARP
-            "eth_src": mac_dst,  # MAC destino (servidor)
-            "eth_dst": mac_src,  # MAC origen (host)
-            "active": "true",
-            "actions": f"output={port}"
-        }
-        """
-        print("instalar flow:")
-        # Instalar todos los flujos (ida, vuelta, ARP solicitud y ARP respuesta)
-        for flow in [flow_fwd, flow_rev, flowArp]:
+        # Instalar todos
+        for flow in [flow_fwd, flow_rev, flow_arp]:
             r = requests.post(f"{BASE_URL}/wm/staticflowpusher/json", json=flow)
             if r.status_code != 200:
-                print(f"Error al instalar flow {flow['name']} ")
+                print(f"❌ Error al instalar flow {flow['name']} en {dpid}: {r.status_code} - {r.text}")
+            else:
+                print(f"✅ Flow {flow['name']} instalado correctamente en {dpid}")
+
 
 
 
